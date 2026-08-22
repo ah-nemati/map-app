@@ -5,8 +5,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
+    "@tailwindcss/vite": "latest",
     "@types/leaflet": "latest",
+    "@vitejs/plugin-react": "latest",
+    "framer-motion": "latest",
     "leaflet": "latest",
     "lucide-react": "latest",
     "react": "latest",
@@ -14,12 +16,11 @@
     "react-leaflet": "latest",
     "react-router-dom": "latest",
     "tailwindcss": "latest",
-    "@tailwindcss/vite": "latest",
     "typescript": "latest",
-    "vite": "latest",
-    "framer-motion": "latest"
+    "vite": "latest"
   },
   "devDependencies": {
-    "@types/react": "^19.2.18"
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4"
   }
 }
