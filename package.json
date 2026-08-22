@@ -16,7 +16,10 @@
     "tailwindcss": "latest",
     "@tailwindcss/vite": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "framer-motion": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/react": "^19.2.18"
+  }
 }
