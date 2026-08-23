@@ -18,6 +18,8 @@
     "react-router-dom": "latest",
     "tailwindcss": "latest",
     "typescript": "latest",
+    "vazir-font": "^30.1.0",
+    "vazirmatn": "^33.0.3",
     "vite": "latest"
   },
   "devDependencies": {
