@@ -8,6 +8,13 @@ export default defineConfig({
     tailwindcss(),
   ],
 
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 800,
+    },
+  },
+
   build: {
     rollupOptions: {
       output: {
