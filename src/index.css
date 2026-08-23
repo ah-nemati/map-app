@@ -1,1 +1,190 @@
-@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Vazirmatn", Arial, sans-serif;
+  direction: rtl;
+  color: #1f2937;
+  background: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  direction: rtl;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+button {
+  font-family: inherit;
+}
+
+.topbar {
+  width: 100%;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  direction: rtl;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  direction: rtl;
+}
+
+.map-container {
+  flex: 1;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+
+.sidebar {
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.status-online {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.truck-marker {
+  transition: transform 0.2s linear;
+  will-change: transform;
+}
+
+@media (max-width: 900px) {
+  .content {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+}
+
+.map{height:100%;width:100%;min-height:500px}
+.ui-btn{display:flex;align-items:center;gap:8px;border:0;border-radius:14px;padding:12px 18px;background:#2563eb;color:white;font-family:inherit;cursor:pointer;transition:.25s;box-shadow:0 8px 20px #0002}.ui-btn:hover{transform:translateY(-2px)}
+.ui-btn-danger{background:#dc2626}
+.ui-card{background:#fff;border-radius:22px;padding:20px;box-shadow:0 10px 30px #0001}
+.ui-badge{display:inline-flex;padding:7px 12px;border-radius:999px;background:#dcfce7;color:#166534}
+.ui-progress{height:10px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin:12px 0}.ui-progress span{display:block;height:100%;background:#2563eb;transition:width .6s ease}
+.metric-card{background:white;border-radius:20px;padding:18px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px #0001}.metric-card strong{display:block;font-size:24px}
+.truck-marker{font-size:35px;transition:transform .3s ease}
+
+
+/* Login UI */
+.login-page{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  direction:rtl;
+  background:linear-gradient(135deg,#0f172a,#2563eb);
+  font-family:"Vazirmatn",sans-serif;
+}
+
+.login-card{
+  width:420px;
+  padding:36px;
+  background:rgba(255,255,255,.96);
+  border-radius:28px;
+  box-shadow:0 25px 70px rgba(0,0,0,.25);
+}
+
+.login-logo{
+  text-align:center;
+  margin-bottom:25px;
+}
+
+.logo-circle{
+  width:90px;
+  height:90px;
+  margin:auto;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#2563eb;
+  color:white;
+}
+
+.login-form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.input-wrapper{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0 12px;
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+}
+
+.ui-input{
+  width:100%;
+  height:46px;
+  border:0;
+  outline:0;
+  background:transparent;
+  font-family:inherit;
+}
+
+.ui-button{
+  height:48px;
+  border:0;
+  border-radius:14px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+  font-family:inherit;
+  transition:.25s;
+}
+
+.ui-button:hover{
+  transform:translateY(-2px);
+}

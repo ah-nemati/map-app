@@ -3,107 +3,169 @@ import {
   TileLayer,
   Polyline,
   Marker,
-  Popup,
+  useMap,
 } from "react-leaflet";
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import route from "../data/route.json";
+import "leaflet/dist/leaflet.css";
 
-const icon = L.divIcon({
-  className: "",
-  html: `<div style="font-size:32px">🚶</div>`,
-  iconSize: [40, 40],
-});
+type Point = [number, number];
+
+type Stats = {
+  speed: number;
+  distance: number;
+  percent: number;
+  eta: string;
+};
+
+const START = { lat: 35.6892, lng: 51.389 };
+const END = { lat: 27.1832, lng: 56.2808 };
+
+const createTruckIcon = (rotation: number) =>
+  L.divIcon({
+    className: "",
+    html: `
+      <div class="truck-marker" style="transform:rotate(${rotation}deg)">
+        🚚
+      </div>
+    `,
+    iconSize: [45, 45],
+  });
+
+async function getRoute(): Promise<Point[]> {
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/` +
+    `${START.lng},${START.lat};${END.lng},${END.lat}` +
+    `?overview=full&geometries=geojson`;
+
+  const response = await fetch(url);
+  const data = await response.json();
+
+  return data.routes[0].geometry.coordinates.map(
+    ([lng, lat]: [number, number]) => [lat, lng],
+  );
+}
+
+function interpolate(a: Point, b: Point, t: number): Point {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+function getHeading(a: Point, b: Point) {
+  return (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+}
 
 export default function TrackingMap({
   running,
   setRunning,
+  onStats,
 }: {
   running: boolean;
   setRunning: (v: boolean) => void;
+  onStats: (v: Stats) => void;
 }) {
-  const [points] = useState(
-    route.geometry.coordinates.map(
-      (p: any) => [p[1], p[0]] as [number, number],
-    ),
-  );
+  const [route, setRoute] = useState<Point[]>([]);
+  const [position, setPosition] = useState<Point>([START.lat, START.lng]);
+  const [rotation, setRotation] = useState(0);
 
-  const [index, setIndex] = useState(0);
+  const animation = useRef<number | null>(null);
 
-  const activeRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (activeRef.current) {
-      activeRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
-  }, [index]);
+  const mover = useRef({
+    index: 0,
+    progress: 0,
+  });
 
   useEffect(() => {
-    if (!running) return;
+    getRoute().then((r) => {
+      setRoute(r);
+      setPosition(r[0]);
+    });
+  }, []);
 
-    const timer = setInterval(() => {
-      setIndex((v) => {
-        if (v >= points.length - 1) {
-          setRunning(false);
-          return v;
-        }
+  useEffect(() => {
+    if (!running || route.length < 2) return;
 
-        return v + 1;
+    let last = 0;
+
+    const animate = (time: number) => {
+      if (!last) last = time;
+
+      const delta = (time - last) / 1000;
+      last = time;
+
+      const state = mover.current;
+
+      const current = route[state.index];
+      const next = route[state.index + 1];
+
+      if (!next) {
+        setRunning(false);
+        return;
+      }
+
+      state.progress += delta * 0.12;
+
+      if (state.progress >= 1) {
+        state.progress = 0;
+        state.index++;
+      }
+
+      const pos = interpolate(current, next, state.progress);
+
+      setPosition(pos);
+      setRotation(getHeading(current, next));
+
+      onStats({
+        speed: Math.round(82),
+        distance: Number((state.index * 0.65).toFixed(1)),
+        percent: Math.floor((state.index / route.length) * 100),
+        eta: "۴ ساعت و ۲۰ دقیقه",
       });
-    }, 80);
 
-    return () => clearInterval(timer);
-  }, [running, points.length, setRunning]);
+      animation.current = requestAnimationFrame(animate);
+    };
 
-  const current = points[index];
-  const next = points[index + 1] || current;
+    animation.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animation.current) cancelAnimationFrame(animation.current);
+    };
+  }, [running, route]);
+
+  if (!route.length)
+    return (
+      <div className="loading-map">
+        در حال دریافت مسیر واقعی جاده‌ای ایران...
+      </div>
+    );
 
   return (
-    <div className="relative h-[calc(100vh-56px)]">
-      <MapContainer center={points[0]} zoom={15} className="h-full w-full">
-        <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+    <MapContainer center={position} zoom={6} className="map">
+      <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-        <Polyline positions={points} />
+      <Polyline
+        positions={route}
+        pathOptions={{
+          color: "#2563eb",
+          weight: 8,
+        }}
+      />
 
-        <Marker position={current} icon={icon}>
-          <Popup>Current point {index + 1}</Popup>
-        </Marker>
-      </MapContainer>
+      <Marker position={position} icon={createTruckIcon(rotation)} />
 
-      <div className="absolute left-4 top-4 z-[1000] w-80 bg-white rounded-2xl shadow-xl p-4">
-        <h2 className="font-bold mb-3">Tracking Points</h2>
-
-        <div className="text-sm mb-4">
-          From:
-          {current[0].toFixed(6)}, {current[1].toFixed(6)}
-          <br />
-          ➡️ To:
-          {next[0].toFixed(6)}, {next[1].toFixed(6)}
-        </div>
-
-        <div className="max-h-72 overflow-auto">
-          {points.map((p, i) => (
-            <div
-              ref={i === index ? activeRef : null}
-              key={i}
-              className={`
-flex justify-between border-b py-2 text-xs transition
-${i === index ? "bg-blue-100 rounded-lg border-blue-500" : ""}
-`}
-            >
-              <span>
-                {i === index && "🚶 Current "}
-                Point {i + 1}
-                <br />
-                {p[0].toFixed(5)}, {p[1].toFixed(5)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      <FollowCamera position={position} />
+    </MapContainer>
   );
+}
+
+function FollowCamera({ position }: { position: Point }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.panTo(position, {
+      animate: true,
+      duration: 0.25,
+    });
+  }, [position]);
+
+  return null;
 }
