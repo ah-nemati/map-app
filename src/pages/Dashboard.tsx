@@ -55,10 +55,10 @@ export default function Dashboard() {
           {/* Live Shamsi / Persian Date & Time Widget */}
           <div className="hidden md:flex topbar-widget-datetime">
             <Calendar size={14} className="text-blue-500 shrink-0" />
-            <span className="font-semibold text-slate-200">
+            <span className="font-semibold">
               {formatPersianDate(currentClock, true)}
             </span>
-            <span className="text-slate-500">|</span>
+            <span className="opacity-40">|</span>
             <Clock size={13} className="text-emerald-500 shrink-0" />
             <span className="text-emerald-400 font-mono font-bold">
               {formatPersianTime(currentClock)}
@@ -68,7 +68,7 @@ export default function Dashboard() {
           {/* Live GPS Status Indicator */}
           <div className="hidden sm:flex topbar-widget-status">
             <Radio size={14} className="text-emerald-500 animate-pulse shrink-0" />
-            <span className="text-slate-300 font-medium">
+            <span className="font-medium">
               جی‌پی‌اس فعال ({toPersianDigits(fleet.length)} ناوگان آنلاین)
             </span>
           </div>

@@ -3,24 +3,13 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
 import iranCounties from "../data/iran-counties.geo.json";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { MapControls } from "./map/MapControls";
+import { VehicleDetailModal } from "./map/VehicleDetailModal";
 import {
-  Crosshair,
-  Maximize2,
-  Navigation,
-  Play,
-  Pause,
-  RotateCcw,
-  Clock,
-  Calendar,
-  Package,
-  UserCheck,
-  Phone,
-  Truck,
-  MapPin,
-  X,
-  Radio,
-  FastForward,
-} from "lucide-react";
+  TRANSIT_CITIES,
+  createCityMarker,
+  createVehicleIcon,
+} from "./map/mapIcons";
 import {
   haversine,
   calculateLookaheadBearing,
@@ -29,117 +18,16 @@ import {
   calculateTotalDistance,
   formatDurationFa,
   toPersianDigits,
-  type LatLng,
 } from "../utils/tracking";
 import { INITIAL_FLEET, type FleetVehicleConfig } from "../data/fleetRoutes";
+import { MapPin } from "lucide-react";
 
 const mode = import.meta.env.MODE;
 const BASE_MAP =
   (mode === "development"
     ? import.meta.env.VITE_MAP_URL
-    : (window as any).env?.VITE_MAP_URL);
-
-// Exact key transit cities with precise GPS coordinates
-const TRANSIT_CITIES: { name: string; position: LatLng; isHub?: boolean }[] = [
-  { name: "تهران", position: [35.6892, 51.389], isHub: true },
-  { name: "مشهد", position: [36.2972, 59.6067], isHub: true },
-  { name: "تبریز", position: [38.08, 46.2919], isHub: true },
-  { name: "اصفهان", position: [32.6546, 51.668], isHub: true },
-  { name: "شیراز", position: [29.5918, 52.5837], isHub: false },
-  { name: "بندرعباس", position: [27.1832, 56.2666], isHub: true },
-  { name: "بوشهر", position: [28.9234, 50.8203], isHub: false },
-  { name: "یزد", position: [31.8974, 54.3569], isHub: false },
-  { name: "قزوین", position: [36.2797, 50.0049], isHub: false },
-  { name: "زنجان", position: [36.6736, 48.4787], isHub: false },
-  { name: "سمنان", position: [35.5769, 53.397], isHub: false },
-  { name: "شاهرود", position: [36.4182, 54.9763], isHub: false },
-];
-
-function createCityMarker(cityName: string, isHub: boolean = false) {
-  const dotBg = isHub ? "#0284c7" : "#0d9488";
-  return L.divIcon({
-    className: "city-geo-marker",
-    iconSize: [0, 0],
-    iconAnchor: [0, 0],
-    html: `
-      <div class="city-marker-wrap">
-        <div class="city-marker-badge">
-          <span style="
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: ${dotBg};
-            box-shadow: 0 0 6px ${dotBg};
-            display: inline-block;
-          "></span>
-          <span>${cityName}</span>
-        </div>
-        <div class="city-marker-dot" style="border-color: ${dotBg};"></div>
-      </div>
-    `,
-  });
-}
-
-function createVehicleIcon(
-  heading: number,
-  color: string,
-  id: string,
-  isSelected: boolean
-) {
-  const darkColor =
-    color === "#3b82f6"
-      ? "#1d4ed8"
-      : color === "#10b981"
-        ? "#047857"
-        : color === "#f59e0b"
-          ? "#b45309"
-          : "#be123c";
-
-  const size = 40;
-  const anchor = 20;
-
-  return L.divIcon({
-    className: `truck-leaflet-marker marker-${id} ${isSelected ? "is-selected-marker" : ""
-      }`,
-    iconSize: [size, size],
-    iconAnchor: [anchor, anchor],
-    html: `
-      <div
-        class="truck-marker-inner"
-        style="transform: rotate(${heading.toFixed(
-      2
-    )}deg); border-color: ${color}; box-shadow: 0 0 ${isSelected ? 22 : 14
-      }px ${color}${isSelected ? "cc" : "88"
-      }, 0 4px 12px rgba(0,0,0,0.6), inset 0 0 8px ${color}60;"
-        onmousedown="event.stopPropagation();"
-        onpointerdown="event.stopPropagation();"
-        onclick="event.stopPropagation(); event.preventDefault(); if (window.__selectFleetVehicle) window.__selectFleetVehicle('${id}');"
-      >
-        <div class="truck-heading-pointer" style="border-bottom-color: ${color}; filter: drop-shadow(0 0 6px ${color});"></div>
-        <div class="truck-vehicle-body">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3.5" y="4.5" width="2" height="4" rx="1" fill="#0f172a" stroke="${color}" stroke-width="0.5" />
-            <rect x="18.5" y="4.5" width="2" height="4" rx="1" fill="#0f172a" stroke="${color}" stroke-width="0.5" />
-            <rect x="3.5" y="15" width="2" height="4.5" rx="1" fill="#0f172a" stroke="${color}" stroke-width="0.5" />
-            <rect x="18.5" y="15" width="2" height="4.5" rx="1" fill="#0f172a" stroke="${color}" stroke-width="0.5" />
-            <path d="M6 7.5C6 4.5 7.5 2 12 2C16.5 2 18 4.5 18 7.5V19C18 20.5 16.5 21.5 12 21.5C7.5 21.5 6 20.5 6 19V7.5Z" fill="url(#truckGrad-${id})" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" />
-            <path d="M7.5 7C7.5 5 8.5 4 12 4C15.5 4 16.5 5 16.5 7L16 9.5H8L7.5 7Z" fill="#ffffff" fill-opacity="0.9" />
-            <rect x="8" y="11" width="8" height="6.5" rx="1.5" fill="#1e293b" fill-opacity="0.75" />
-            <circle cx="8" cy="3.5" r="0.9" fill="#fef08a" />
-            <circle cx="16" cy="3.5" r="0.9" fill="#fef08a" />
-            <defs>
-              <linearGradient id="truckGrad-${id}" x1="6" y1="2" x2="18" y2="21.5" gradientUnits="userSpaceOnUse">
-                <stop stop-color="${color}" />
-                <stop offset="1" stop-color="${darkColor}" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-      </div>
-      <div class="truck-pulse-ring" style="border-color: ${color}90;"></div>
-    `,
-  });
-}
+    : (window as any).env?.VITE_MAP_URL) ||
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
 export interface IranCountyMapProps {
   mapRef?: React.MutableRefObject<L.Map | null>;
@@ -248,7 +136,6 @@ export const IranCountyMap: React.FC<IranCountyMapProps> = ({
         segmentProgress: 0,
       };
 
-      // Set initial marker rotation immediately if DOM element exists
       const marker = markerRefs.current[v.id];
       if (marker) {
         const el = marker.getElement();
@@ -474,7 +361,7 @@ export const IranCountyMap: React.FC<IranCountyMapProps> = ({
         minZoom={5}>
         <TileLayer url={BASE_MAP} attribution="© OpenStreetMap contributors" />
 
-        {/* 1. Precise City Geo Markers (Exactly on the cities, theme-reactive) */}
+        {/* 1. Precise City Geo Markers (Theme-reactive) */}
         {TRANSIT_CITIES.map((city) => (
           <Marker
             key={`city-${city.name}`}
@@ -543,80 +430,25 @@ export const IranCountyMap: React.FC<IranCountyMapProps> = ({
         })}
       </MapContainer>
 
-      {/* Floating Toolbar in Top-Right Corner (Without +/- zoom buttons as requested) */}
-      <div className="map-floating-panel map-pos-top-right">
-        <div className="map-control-group">
-          <button
-            type="button"
-            className="map-control-btn"
-            title="نمایش کل نقشه کشور"
-            onClick={handleFitAllRoutes}>
-            <Maximize2 size={16} />
-          </button>
-
-          <button
-            type="button"
-            className={`map-control-btn ${autoFollow ? "is-active" : ""}`}
-            title={
-              autoFollow
-                ? "دنبال‌کردن خودکار خودرو (فعال)"
-                : "دنبال‌کردن خودکار خودرو (غیرفعال)"
-            }
-            onClick={() => {
-              const next = !autoFollow;
-              setAutoFollow(next);
-              if (next && selectedVehicle) handleRecenterOnVehicle(selectedVehicle);
-            }}>
-            <Navigation size={16} />
-          </button>
-
-          <button
-            type="button"
-            className="map-control-btn"
-            title="تمرکز روی خودروی انتخابی"
-            onClick={() => {
-              if (selectedVehicle) handleRecenterOnVehicle(selectedVehicle);
-              else if (fleet.length > 0) handleRecenterOnVehicle(fleet[0]);
-            }}>
-            <Crosshair size={16} />
-          </button>
-
-          <div className="map-control-divider" />
-
-          {/* Play / Pause simulation toggle */}
-          <button
-            type="button"
-            className={`map-control-btn ${running ? "is-active" : ""}`}
-            title={
-              running
-                ? "توقف موقت شبیه‌سازی حرکت"
-                : "شروع شبیه‌سازی حرکت ناوگان"
-            }
-            onClick={() => setRunning(!running)}>
-            {running ? <Pause size={16} /> : <Play size={16} />}
-          </button>
-
-          {/* Speed multiplier toggle */}
-          <button
-            type="button"
-            className="map-control-btn"
-            title={`سرعت شبیه‌سازی: ${toPersianDigits(speedMultiplier)}x`}
-            onClick={toggleSpeed}>
-            <div className="flex items-center text-[10px] font-bold font-mono">
-              <FastForward size={12} className="mr-0.5" />
-              <span>{speedMultiplier}x</span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="map-control-btn"
-            title="شروع مجدد همه مسیرها از مبدا"
-            onClick={handleResetRoutes}>
-            <RotateCcw size={15} />
-          </button>
-        </div>
-      </div>
+      {/* Floating Toolbar in Top-Right Corner */}
+      <MapControls
+        autoFollow={autoFollow}
+        running={running}
+        speedMultiplier={speedMultiplier}
+        onFitAllRoutes={handleFitAllRoutes}
+        onToggleAutoFollow={() => {
+          const next = !autoFollow;
+          setAutoFollow(next);
+          if (next && selectedVehicle) handleRecenterOnVehicle(selectedVehicle);
+        }}
+        onRecenter={() => {
+          if (selectedVehicle) handleRecenterOnVehicle(selectedVehicle);
+          else if (fleet.length > 0) handleRecenterOnVehicle(fleet[0]);
+        }}
+        onToggleRunning={() => setRunning(!running)}
+        onToggleSpeed={toggleSpeed}
+        onResetRoutes={handleResetRoutes}
+      />
 
       {/* Floating Connection Status Widget in Bottom-Right Corner */}
       <div className="map-floating-panel map-pos-bottom-right">
@@ -625,166 +457,14 @@ export const IranCountyMap: React.FC<IranCountyMapProps> = ({
 
       {/* Single Vehicle Detail Modal when a truck is clicked */}
       {selectedVehicle && (
-        <div className="vehicle-detail-modal">
-          {/* Header */}
-          <div className="modal-header-row">
-            <div className="modal-header-left">
-              <div
-                className="modal-truck-badge"
-                style={{ background: selectedVehicle.color }}>
-                <Truck size={20} />
-              </div>
-              <div className="modal-title-box">
-                <h3>{selectedVehicle.name}</h3>
-                <span>{selectedVehicle.model}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSelectedVehicle(null)}
-              className="modal-close-btn"
-              title="بستن پنجره جزئیات">
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Live Status & Speed Bar */}
-          <div className="modal-stats-grid">
-            <div className="modal-stat-box">
-              <span className="modal-stat-label">وضعیت پایش:</span>
-              <div className="modal-stat-value">
-                <Radio
-                  size={13}
-                  className={
-                    running
-                      ? "text-emerald-500 animate-pulse"
-                      : "text-amber-500"
-                  }
-                />
-                <span className="text-xs">
-                  {running && (liveSpeeds[selectedVehicle.id] || 0) > 0
-                    ? "در حال حرکت"
-                    : "متوقف شده"}
-                </span>
-              </div>
-            </div>
-
-            <div className="modal-stat-box">
-              <span className="modal-stat-label">سرعت لحظه‌ای:</span>
-              <span
-                className="modal-stat-value font-mono"
-                style={{ color: selectedVehicle.color }}>
-                {toPersianDigits(liveSpeeds[selectedVehicle.id] || 0)}{" "}
-                <span className="text-[10px] text-slate-400 font-normal">
-                  km/h
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Progress & Distance */}
-          {activeStats && (
-            <div className="modal-progress-card">
-              <div className="modal-progress-header">
-                <span className="text-secondary font-medium">
-                  پیشرفت مسیر ({selectedVehicle.origin.split(" ")[0]} ←{" "}
-                  {selectedVehicle.destination.split(" ")[0]})
-                </span>
-                <span
-                  className="font-mono font-bold"
-                  style={{ color: selectedVehicle.color }}>
-                  {toPersianDigits(activeStats.percent)}٪
-                </span>
-              </div>
-
-              <div className="modal-progress-bar-bg">
-                <div
-                  className="modal-progress-bar-fill"
-                  style={{
-                    width: `${activeStats.percent}%`,
-                    backgroundColor: selectedVehicle.color,
-                  }}
-                />
-              </div>
-
-              <div className="modal-progress-meta">
-                <span>طی‌شده: {toPersianDigits(activeStats.distance)} km</span>
-                <span>زمان تخمینی: {activeStats.eta}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Detailed Vehicle & Logistics Info */}
-          <div className="modal-info-list">
-            <div className="modal-info-row">
-              <span className="modal-info-label">
-                <UserCheck size={13} /> راننده مسئول:
-              </span>
-              <span className="modal-info-value">
-                {selectedVehicle.driver}
-              </span>
-            </div>
-
-            <div className="modal-info-row">
-              <span className="modal-info-label">
-                <Phone size={13} /> شماره تماس:
-              </span>
-              <span className="modal-info-value font-mono">
-                {toPersianDigits(selectedVehicle.driverPhone)}
-              </span>
-            </div>
-
-            <div className="modal-info-row">
-              <span className="modal-info-label">
-                <Truck size={13} /> پلاک کشنده:
-              </span>
-              <span className="modal-info-value font-mono">
-                {selectedVehicle.plate}
-              </span>
-            </div>
-
-            <div className="modal-info-row">
-              <span className="modal-info-label">
-                <Package size={13} /> محموله و وزن:
-              </span>
-              <span className="modal-info-value text-emerald-400">
-                {selectedVehicle.cargo} (
-                {toPersianDigits(selectedVehicle.cargoWeight)})
-              </span>
-            </div>
-
-            <div className="modal-info-row">
-              <span className="modal-info-label">
-                <Calendar size={13} /> شماره بارنامه:
-              </span>
-              <span className="modal-info-value font-mono">
-                {selectedVehicle.invoiceNumber}
-              </span>
-            </div>
-
-            <div className="modal-info-row">
-              <span className="modal-info-label">
-                <Clock size={13} /> زمان خروج از مبدا:
-              </span>
-              <span className="modal-info-value text-cyan-400">
-                ساعت {toPersianDigits(selectedVehicle.startTime)}
-              </span>
-            </div>
-          </div>
-
-          {/* Modal Actions */}
-          <button
-            type="button"
-            className="modal-primary-btn"
-            style={{
-              background: `linear-gradient(135deg, ${selectedVehicle.color}, ${selectedVehicle.accentColor})`,
-            }}
-            onClick={() => handleRecenterOnVehicle(selectedVehicle)}>
-            <Crosshair size={15} />
-            <span>تمرکز و زوم روی خودرو</span>
-          </button>
-        </div>
+        <VehicleDetailModal
+          vehicle={selectedVehicle}
+          running={running}
+          liveSpeed={liveSpeeds[selectedVehicle.id] || 0}
+          stats={activeStats}
+          onClose={() => setSelectedVehicle(null)}
+          onRecenter={handleRecenterOnVehicle}
+        />
       )}
 
       {/* Bottom Fleet Status Pill */}
